@@ -1,0 +1,42 @@
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+
+# Vault credentials and sensitive data
+role_id.txt
+secret_id.txt
+root_token.txt
+unseal_keys.txt
+*.pem
+*.key
+*.crt
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.snap
+*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log

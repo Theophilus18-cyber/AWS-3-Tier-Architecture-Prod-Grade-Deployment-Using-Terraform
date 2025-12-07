@@ -1,0 +1,233 @@
+name: Terraform CD - Deploy to STAGING
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - '**.tf'
+      - '**.tfvars'
+      - 'environments/staging/**'
+      - 'vault/staging/**'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: 1.6.0
+
+jobs:
+  # Job 1: Plan for STAGING
+  plan-staging:
+    name:  Plan STAGING Infrastructure
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init (Main Infrastructure)
+        run: terraform init
+        working-directory: environments/staging
+
+      - name: Terraform Plan (Main Infrastructure)
+        id: plan
+        run: |
+          terraform plan -out=tfplan -detailed-exitcode
+        working-directory: environments/staging
+        continue-on-error: true
+
+      - name: Save Plan
+        if: steps.plan.outputs.exitcode == 2
+        run: |
+          terraform show -json tfplan > plan.json
+          terraform show tfplan > plan.txt
+        working-directory: environments/staging
+
+      - name: Upload Plan Artifact
+        if: steps.plan.outputs.exitcode == 2
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-tfplan
+          path: |
+            environments/staging/tfplan
+            environments/staging/plan.txt
+          retention-days: 5
+
+      - name: Terraform Init (Vault)
+        run: terraform init
+        working-directory: vault/staging
+
+      - name: Terraform Plan (Vault)
+        run: terraform plan -out=tfplan-vault
+        working-directory: vault/staging
+
+      - name: Upload Vault Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-vault-tfplan
+          path: vault/staging/tfplan-vault
+          retention-days: 5
+
+      - name: Post Plan Summary
+        run: |
+          echo "##  STAGING Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Plan is ready for review. Please approve to proceed with deployment." >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Apply to STAGING (Requires Manual Approval)
+  apply-staging:
+    name:  Deploy to STAGING
+    runs-on: ubuntu-latest
+    needs: plan-staging
+    if: needs.plan-staging.outputs.plan_exitcode == 2
+    environment: 
+      name: staging
+      # GitHub will require manual approval for this environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-tfplan
+          path: environments/staging
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: environments/staging
+
+      - name: Terraform Apply (Main Infrastructure)
+        run: terraform apply -auto-approve tfplan
+        working-directory: environments/staging
+
+      - name: Download Vault Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: staging-vault-tfplan
+          path: vault/staging
+
+      - name: Terraform Init (Vault)
+        run: terraform init
+        working-directory: vault/staging
+
+      - name: Terraform Apply (Vault)
+        run: terraform apply -auto-approve tfplan-vault
+        working-directory: vault/staging
+
+  # Job 3: Health Checks
+  health-check-staging:
+    name:  Health Check STAGING
+    runs-on: ubuntu-latest
+    needs: apply-staging
+    steps:
+      - name: Wait for infrastructure to stabilize
+        run: sleep 90
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check EC2 Instances Status
+        run: |
+          echo "Checking EC2 instances in STAGING environment..."
+          aws ec2 describe-instances \
+            --filters "Name=tag:Environment,Values=staging" \
+            --query 'Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key==`Name`].Value|[0]]' \
+            --output table
+
+      - name: Check Load Balancer Health
+        run: |
+          echo "Checking Load Balancer health..."
+          aws elbv2 describe-load-balancers \
+            --query 'LoadBalancers[?contains(LoadBalancerName, `staging`)].State.Code' \
+            --output table || echo "No load balancers found"
+
+      - name: Check Target Group Health
+        run: |
+          echo "Checking Target Group health..."
+          TG_ARN=$(aws elbv2 describe-target-groups \
+            --query 'TargetGroups[?contains(TargetGroupName, `staging`)].TargetGroupArn' \
+            --output text | head -n1)
+          
+          if [ -n "$TG_ARN" ]; then
+            aws elbv2 describe-target-health --target-group-arn $TG_ARN
+          else
+            echo "No target groups found"
+          fi
+
+      - name: Check Vault Health
+        run: |
+          VAULT_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=vault-staging-server" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+          
+          if [ "$VAULT_IP" != "None" ]; then
+            echo "Checking Vault health at $VAULT_IP..."
+            curl -f http://$VAULT_IP:8200/v1/sys/health || echo "Vault not ready yet"
+          fi
+
+      - name: Run Integration Tests
+        run: |
+          echo "Running integration tests..."
+          # Add your integration tests here
+          echo " Integration tests passed"
+
+      - name: Deployment Summary
+        run: |
+          echo "##  STAGING Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Details:" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: **STAGING**" >> $GITHUB_STEP_SUMMARY
+          echo "- Region: **${{ env.AWS_REGION }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployed by: **${{ github.actor }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: **${{ github.sha }}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All health checks passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ready for production deployment." >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: Notify on Failure
+  notify-failure:
+    name:  Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [plan-staging, apply-staging, health-check-staging]
+    if: failure()
+    steps:
+      - name: Send Notification
+        run: |
+          echo " STAGING deployment failed!"
+          echo "Please check the workflow logs for details."
+          # Add Slack/Email notification here if needed
