@@ -2,7 +2,7 @@ const { pool } = require('../config/database');
 
 const SORTABLE_COLUMNS = ['created_at', 'amount', 'donor_name', 'id'];
 //testing deployement.
-// GET all donations
+// GET all donations.
 const getAllDonations = async (req, res) => {
     try {
         const { cause, sort = 'created_at', order = 'DESC' } = req.query;
