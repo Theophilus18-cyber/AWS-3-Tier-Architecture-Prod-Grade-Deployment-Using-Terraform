@@ -3,6 +3,8 @@ import { Heart, DollarSign, Users, ArrowRight, Gift, Calendar } from 'lucide-rea
 import axios from 'axios';
 
 // API configuration
+
+//testing deployement
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 function App() {
