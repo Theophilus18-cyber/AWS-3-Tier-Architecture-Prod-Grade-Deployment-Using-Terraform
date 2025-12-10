@@ -37,7 +37,7 @@ $OIDC_PROVIDER_ARN = "arn:aws:iam::${AWS_ACCOUNT_ID}:oidc-provider/token.actions
 
 try {
     aws iam get-open-id-connect-provider --open-id-connect-provider-arn $OIDC_PROVIDER_ARN 2>$null
-    Write-Host "✅ OIDC provider already exists" -ForegroundColor Green
+    Write-Host "OIDC provider already exists" -ForegroundColor Green
 }
 catch {
     aws iam create-open-id-connect-provider `
@@ -45,7 +45,7 @@ catch {
         --client-id-list sts.amazonaws.com `
         --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 `
         --region $AWS_REGION
-    Write-Host "✅ OIDC provider created" -ForegroundColor Green
+    Write-Host " OIDC provider created" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -109,7 +109,7 @@ function Create-GitHubActionsRole {
         --role-name $ROLE_NAME `
         --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
     
-    Write-Host "  ✅ Role created: arn:aws:iam::${AccountId}:role/$ROLE_NAME" -ForegroundColor Green
+    Write-Host "   Role created: arn:aws:iam::${AccountId}:role/$ROLE_NAME" -ForegroundColor Green
     
     # Clean up
     Remove-Item $TRUST_POLICY_FILE -ErrorAction SilentlyContinue
@@ -122,7 +122,7 @@ Create-GitHubActionsRole -Environment "Prod" -AccountId $AWS_ACCOUNT_ID -RepoPat
 
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "✅ Setup Complete!" -ForegroundColor Green
+Write-Host " Setup Complete!" -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Add these secrets to your GitHub repository:" -ForegroundColor Yellow
@@ -141,7 +141,7 @@ Write-Host "1. Go to: https://github.com/$REPO_PATH/settings/secrets/actions"
 Write-Host "2. Click 'New repository secret'"
 Write-Host "3. Add each secret above"
 Write-Host ""
-Write-Host "⚠️  SECURITY NOTE:" -ForegroundColor Red
+Write-Host "  SECURITY NOTE:" -ForegroundColor Red
 Write-Host "The roles currently have AdministratorAccess."
 Write-Host "For production, consider using least-privilege policies."
 Write-Host ""
@@ -157,5 +157,5 @@ Write-Host "Would you like to copy the ARNs to clipboard? (yes/no)" -ForegroundC
 $COPY = Read-Host
 if ($COPY -eq "yes") {
     $ARNS | Set-Clipboard
-    Write-Host "✅ ARNs copied to clipboard!" -ForegroundColor Green
+    Write-Host " ARNs copied to clipboard!" -ForegroundColor Green
 }

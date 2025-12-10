@@ -67,6 +67,7 @@ module "database" {
 }
 
 # Compute Module (App and Web Tiers)
+# Compute Module (App and Web Tiers)
 module "compute" {
   source                = "./modules/compute"
   ami_id                = var.ami_id
@@ -84,6 +85,15 @@ module "compute" {
   app_max_size          = var.app_max_size
   app_desired_capacity  = var.app_desired_capacity
   environment           = var.environment
+
+  # Database connection for App Tier
+  db_endpoint = replace(module.database.db_endpoint, ":5432", "") # Remove port if included
+  db_username = var.db_username
+  db_password = var.db_password
+  db_name     = var.db_name
+
+  # Docker Hub
+  dockerhub_username = var.dockerhub_username
 }
 
 # Load Balancer Module
@@ -122,5 +132,16 @@ module "monitoring" {
   ec2_cpu_high_threshold      = var.ec2_cpu_high_threshold
   rds_cpu_threshold           = var.rds_cpu_threshold
   log_retention_days          = var.log_retention_days
+}
+
+# CDN Module (CloudFront)
+module "cdn" {
+  source = "./modules/cdn"
+
+  environment        = var.environment
+  origin_domain_name = module.loadbalancer.alb_dns_name         # ← Gets DNS from loadbalancer output
+  enabled            = var.environment == "prod" ? true : false # Only enable in prod
+  price_class        = var.cdn_price_class
+  certificate_arn    = var.cdn_certificate_arn
 }
 

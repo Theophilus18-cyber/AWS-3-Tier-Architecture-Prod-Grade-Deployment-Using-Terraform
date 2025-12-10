@@ -1,0 +1,63 @@
+resource "aws_cloudfront_distribution" "this" {
+  count = var.environment == "prod" && var.enabled ? 1 : 0
+
+  origin {
+    domain_name = var.origin_domain_name
+    origin_id   = "ALB-${var.origin_domain_name}"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "match-viewer" # Can also use "http-only" if ALB handles HTTPS termination
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  enabled             = true
+  is_ipv6_enabled     = true
+  default_root_object = "index.html" # Note: For ALB, this might not be needed if ALB handles routing, but harmless
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"] # ALB needs full methods
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "ALB-${var.origin_domain_name}"
+
+    forwarded_values {
+      query_string = true  # ALB apps usually need query strings
+      headers      = ["*"] # Forward all headers to ALB
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  price_class = var.price_class
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  # ---------- Viewer Certificate ----------
+  # If you have an ACM certificate, uncomment the block below
+  # and provide its ARN via variable "certificate_arn"
+  #
+  # viewer_certificate {
+  #   acm_certificate_arn            = var.certificate_arn
+  #   ssl_support_method             = "sni-only"
+  #   minimum_protocol_version       = "TLSv1.2_2021"
+  # }
+
+  # Use default CloudFront certificate if ACM is not provided
+  viewer_certificate {
+    cloudfront_default_certificate = var.certificate_arn == "" ? true : false
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "3-Tier-AWS-Infrastructure"
+  }
+}

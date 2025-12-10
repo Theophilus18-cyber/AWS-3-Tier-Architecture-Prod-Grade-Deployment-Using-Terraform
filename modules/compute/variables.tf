@@ -72,3 +72,34 @@ variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
 }
+
+variable "db_endpoint" {
+  description = "Database endpoint"
+  type        = string
+  default     = ""
+}
+
+variable "db_username" {
+  description = "Database username"
+  type        = string
+  default     = ""
+}
+
+variable "db_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "db_name" {
+  description = "Database name"
+  type        = string
+  default     = "donations"
+}
+
+variable "dockerhub_username" {
+  description = "Docker Hub username for pulling images"
+  type        = string
+  default     = "theophilus18cyber" # Default or passed from main
+}

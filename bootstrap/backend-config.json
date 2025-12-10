@@ -1,0 +1,1 @@
+{"dynamodb_table":"terraform-state-lock","encrypt":true,"environments":{"dev":{"key":"environments/dev/terraform.tfstate"},"prod":{"key":"environments/prod/terraform.tfstate"},"staging":{"key":"environments/staging/terraform.tfstate"}},"region":"us-east-1","s3_bucket":"terraform-state-donation-app-theophilus"}

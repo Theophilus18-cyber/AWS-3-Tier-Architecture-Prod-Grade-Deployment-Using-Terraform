@@ -2,9 +2,9 @@
 # Auto-configure backend.tf files with values from bootstrap outputs
 # This script reads the Terraform outputs and updates all backend configurations
 
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║     Auto-Configure Backend from Bootstrap Outputs               ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "==================================================================" -ForegroundColor Cyan
+Write-Host "     Auto-Configure Backend from Bootstrap Outputs                " -ForegroundColor Cyan
+Write-Host "==================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if we're in the bootstrap directory
@@ -151,9 +151,9 @@ Set-Content -Path $mainBackendFile -Value $mainBackendConfig -Encoding UTF8
 Write-Host "      Updated: backend.tf" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║                  Configuration Complete!                      ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "==================================================================" -ForegroundColor Green
+Write-Host "                  Configuration Complete!                         " -ForegroundColor Green
+Write-Host "==================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host " Summary:" -ForegroundColor Yellow
 Write-Host "   • All backend.tf files updated with values from bootstrap/outputs.tf" -ForegroundColor White

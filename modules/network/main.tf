@@ -30,7 +30,7 @@ resource "aws_internet_gateway" "main" {
 
 #elastic ip for nat gateway
 resource "aws_eip" "nat" {
-  count  = 2
+  count  = var.environment == "prod" ? 2 : 1
   domain = "vpc"
 
   tags = {
@@ -70,7 +70,7 @@ resource "aws_subnet" "private" {
 
 # NAT Gateways
 resource "aws_nat_gateway" "main" {
-  count         = 2
+  count         = var.environment == "prod" ? 2 : 1
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[count.index].id
 
@@ -112,7 +112,7 @@ resource "aws_route_table" "private" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index % 2].id
+    nat_gateway_id = aws_nat_gateway.main[count.index % (var.environment == "prod" ? 2 : 1)].id
   }
 
   tags = {

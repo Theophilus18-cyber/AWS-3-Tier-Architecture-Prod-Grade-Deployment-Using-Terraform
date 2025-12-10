@@ -4,7 +4,7 @@ provider "aws" {
 
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "tf_state" {
-  bucket = "my_state_bucket_terraform_state_bucket" # Change this to a globally unique name
+  bucket = "terraform-state-donation-app-theophilus" # Change this to a globally unique name
 
   tags = {
     Name        = "Terraform State Bucket"
