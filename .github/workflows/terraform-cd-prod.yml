@@ -62,7 +62,7 @@ jobs:
             exit 1
           fi
           cat <<'EOF' > terraform.tfvars
-${{ secrets.TFVARS_PROD }}
+          ${{ secrets.TFVARS_PROD }}
 EOF
         working-directory: environments/prod
 
@@ -183,7 +183,7 @@ EOF
             exit 1
           fi
           cat <<'EOF' > terraform.tfvars
-${{ secrets.TFVARS_PROD_VAULT }}
+          ${{ secrets.TFVARS_PROD_VAULT }}
 EOF
         working-directory: vault/prod
 

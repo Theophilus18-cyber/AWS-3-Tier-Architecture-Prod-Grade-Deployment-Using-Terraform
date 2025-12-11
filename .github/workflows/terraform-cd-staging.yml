@@ -39,7 +39,7 @@ jobs:
             exit 1
           fi
           cat <<'EOF' > terraform.tfvars
-${{ secrets.TFVARS_STAGING }}
+          ${{ secrets.TFVARS_STAGING }}
 EOF
         working-directory: environments/staging
 
@@ -95,7 +95,7 @@ EOF
             exit 1
           fi
           cat <<'EOF' > terraform.tfvars
-${{ secrets.TFVARS_STAGING_VAULT }}
+          ${{ secrets.TFVARS_STAGING_VAULT }}
 EOF
         working-directory: vault/staging
 
