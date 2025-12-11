@@ -72,14 +72,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Write terraform.tfvars from secret
+        env:
+          TFVARS_CONTENT: ${{ secrets.TFVARS_DEV }}
         run: |
-          if [ -z "${{ secrets.TFVARS_DEV }}" ]; then
+          if [ -z "$TFVARS_CONTENT" ]; then
             echo "TFVARS_DEV secret is missing; cannot render terraform.tfvars" >&2
             exit 1
           fi
-          cat <<'EOF' > terraform.tfvars
-          ${{ secrets.TFVARS_DEV }}
-EOF
+          printf '%s\n' "$TFVARS_CONTENT" > terraform.tfvars
         working-directory: environments/dev
 
       - name: Configure AWS Credentials
@@ -125,14 +125,14 @@ EOF
           retention-days: 5
 
       - name: Write Vault terraform.tfvars from secret
+        env:
+          TFVARS_CONTENT: ${{ secrets.TFVARS_DEV_VAULT }}
         run: |
-          if [ -z "${{ secrets.TFVARS_DEV_VAULT }}" ]; then
+          if [ -z "$TFVARS_CONTENT" ]; then
             echo "TFVARS_DEV_VAULT secret is missing; cannot render vault terraform.tfvars" >&2
             exit 1
           fi
-          cat <<'EOF' > terraform.tfvars
-          ${{ secrets.TFVARS_DEV_VAULT }}
-EOF
+          printf '%s\n' "$TFVARS_CONTENT" > terraform.tfvars
         working-directory: vault/dev
 
       - name: Terraform Init (Vault)
