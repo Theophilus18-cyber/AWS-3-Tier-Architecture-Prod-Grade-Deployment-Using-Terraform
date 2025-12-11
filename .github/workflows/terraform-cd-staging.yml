@@ -32,6 +32,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Write terraform.tfvars from secret
+        run: |
+          if [ -z "${{ secrets.TFVARS_STAGING }}" ]; then
+            echo "TFVARS_STAGING secret is missing; cannot render terraform.tfvars" >&2
+            exit 1
+          fi
+          cat <<'EOF' > terraform.tfvars
+${{ secrets.TFVARS_STAGING }}
+EOF
+        working-directory: environments/staging
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -50,9 +61,15 @@ jobs:
       - name: Terraform Plan (Main Infrastructure)
         id: plan
         run: |
+          set +e
           terraform plan -out=tfplan -detailed-exitcode
+          exitcode=$?
+          echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
+          if [ "$exitcode" -eq 1 ]; then
+            exit 1
+          fi
+          exit 0
         working-directory: environments/staging
-        continue-on-error: true
 
       - name: Save Plan
         if: steps.plan.outputs.exitcode == 2
@@ -70,6 +87,17 @@ jobs:
             environments/staging/tfplan
             environments/staging/plan.txt
           retention-days: 5
+
+      - name: Write Vault terraform.tfvars from secret
+        run: |
+          if [ -z "${{ secrets.TFVARS_STAGING_VAULT }}" ]; then
+            echo "TFVARS_STAGING_VAULT secret is missing; cannot render vault terraform.tfvars" >&2
+            exit 1
+          fi
+          cat <<'EOF' > terraform.tfvars
+${{ secrets.TFVARS_STAGING_VAULT }}
+EOF
+        working-directory: vault/staging
 
       - name: Terraform Init (Vault)
         run: terraform init
