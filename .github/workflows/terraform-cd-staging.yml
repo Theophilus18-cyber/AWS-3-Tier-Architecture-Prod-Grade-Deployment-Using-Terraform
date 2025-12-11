@@ -9,6 +9,7 @@ on:
       - '**.tfvars'
       - 'environments/staging/**'
       - 'vault/staging/**'
+      - '.github/workflows/**'  # Trigger on workflow changes
   workflow_dispatch:  # Allow manual trigger
 
 permissions:

@@ -10,6 +10,7 @@ on:
       - 'environments/dev/**'
       - 'vault/dev/**'
       - 'donation-app/**'  # Trigger on app changes too
+      - '.github/workflows/**'  # Trigger on workflow changes
   workflow_dispatch:
 
 permissions:
