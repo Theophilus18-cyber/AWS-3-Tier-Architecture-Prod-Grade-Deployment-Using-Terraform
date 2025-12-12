@@ -3,8 +3,8 @@
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
-terraform.tfvars
-*.tfvars
+# terraform.tfvars
+# *.tfvars
 !example.tfvars
 
 # Local .terraform directories
