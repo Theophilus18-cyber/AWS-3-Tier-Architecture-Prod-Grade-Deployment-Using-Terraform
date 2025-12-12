@@ -12,6 +12,7 @@
 # - environments/staging/backend.tf
 # - environments/prod/backend.tf
 
+/*
 terraform {
   backend "s3" {
     bucket         = "terraform-state-donation-app-theophilus"
@@ -21,3 +22,4 @@ terraform {
     encrypt        = true
   }
 }
+*/

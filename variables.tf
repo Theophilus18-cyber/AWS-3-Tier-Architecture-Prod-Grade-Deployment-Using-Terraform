@@ -132,4 +132,12 @@ variable "backend_desired_count" {
   type        = number
   default     = 2
 }
-variable "instance_type" { description = "Instance type" type = string } variable "key_name" { description = "Key pair name" type = string }
+variable "instance_type" {
+  description = "Instance type for EC2 instances"
+  type        = string
+}
+
+variable "key_name" {
+  description = "Key pair name for SSH access"
+  type        = string
+}
