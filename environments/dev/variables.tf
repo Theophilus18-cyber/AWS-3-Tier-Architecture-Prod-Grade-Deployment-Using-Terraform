@@ -141,7 +141,7 @@ variable "log_retention_days" {
 variable "cdn_price_class" {
   description = "CloudFront price class (PriceClass_100, PriceClass_200, PriceClass_All)"
   type        = string
-  default     = "PriceClass_100" # Use only North America and Europe edge locations (cheapest)
+  default     = "PriceClass_100"
 }
 
 variable "cdn_certificate_arn" {
@@ -150,8 +150,33 @@ variable "cdn_certificate_arn" {
   default     = ""
 }
 
-variable "dockerhub_username" {
-  description = "Docker Hub username for pulling images"
-  type        = string
-  default     = "theophilus18cyber"
+# ECS Configuration
+variable "ecs_min_size" {
+  description = "Minimum number of ECS EC2 instances"
+  type        = number
+  default     = 1
+}
+
+variable "ecs_max_size" {
+  description = "Maximum number of ECS EC2 instances"
+  type        = number
+  default     = 4
+}
+
+variable "ecs_desired_capacity" {
+  description = "Desired number of ECS EC2 instances"
+  type        = number
+  default     = 2
+}
+
+variable "frontend_desired_count" {
+  description = "Desired number of frontend ECS tasks"
+  type        = number
+  default     = 2
+}
+
+variable "backend_desired_count" {
+  description = "Desired number of backend ECS tasks"
+  type        = number
+  default     = 2
 }

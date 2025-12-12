@@ -14,6 +14,7 @@ module "main" {
   instance_type = var.instance_type
   key_name      = var.key_name
 
+  # Old compute variables (still needed for root module validation)
   cpu_threshold        = var.cpu_threshold
   web_min_size         = var.web_min_size
   web_max_size         = var.web_max_size
@@ -35,5 +36,11 @@ module "main" {
 
   cdn_price_class     = var.cdn_price_class
   cdn_certificate_arn = var.cdn_certificate_arn
-  dockerhub_username  = var.dockerhub_username
+
+  # ECS Configuration
+  ecs_min_size           = var.ecs_min_size
+  ecs_max_size           = var.ecs_max_size
+  ecs_desired_capacity   = var.ecs_desired_capacity
+  frontend_desired_count = var.frontend_desired_count
+  backend_desired_count  = var.backend_desired_count
 }
