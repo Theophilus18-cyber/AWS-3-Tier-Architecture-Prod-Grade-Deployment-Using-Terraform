@@ -29,6 +29,7 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
+  #checkov:skip=CKV_AWS_382:Egress to 0.0.0.0/0 required for internet access
 
   tags = {
     Name        = "${var.environment}-web-sg"
