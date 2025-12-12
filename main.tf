@@ -1,4 +1,5 @@
 terraform {
+  required_version = ">= 1.6.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -66,34 +67,11 @@ module "database" {
 
 }
 
-# Compute Module (App and Web Tiers)
-# Compute Module (App and Web Tiers)
-module "compute" {
-  source                = "./modules/compute"
-  ami_id                = var.ami_id
-  instance_type         = var.instance_type
-  key_name              = var.key_name
-  web_security_group_id = module.security.web_security_group_id
-  app_security_group_id = module.security.app_security_group_id
-  public_subnet_ids     = module.network.public_subnet_ids
-  app_subnet_ids        = module.network.app_subnet_ids
-  cpu_threshold         = var.cpu_threshold
-  web_min_size          = var.web_min_size
-  web_max_size          = var.web_max_size
-  web_desired_capacity  = var.web_desired_capacity
-  app_min_size          = var.app_min_size
-  app_max_size          = var.app_max_size
-  app_desired_capacity  = var.app_desired_capacity
-  environment           = var.environment
+# ECR Module - Container Registry
+module "ecr" {
+  source = "./modules/ecr"
 
-  # Database connection for App Tier
-  db_endpoint = replace(module.database.db_endpoint, ":5432", "") # Remove port if included
-  db_username = var.db_username
-  db_password = var.db_password
-  db_name     = var.db_name
-
-  # Docker Hub
-  dockerhub_username = var.dockerhub_username
+  environment = var.environment
 }
 
 # Load Balancer Module
@@ -102,8 +80,45 @@ module "loadbalancer" {
   vpc_id                = module.network.vpc_id
   public_subnet_ids     = module.network.public_subnet_ids
   web_security_group_id = module.security.web_security_group_id
-  web_asg_id            = module.compute.web_asg_id
+  use_ecs               = true # Using ECS, not ASG
   environment           = var.environment
+}
+
+# ECS Module - Container Orchestration
+module "ecs" {
+  source = "./modules/ecs"
+
+  environment           = var.environment
+  aws_region            = var.aws_region
+  instance_type         = var.instance_type
+  key_name              = var.key_name
+  ecs_security_group_id = module.security.ecs_security_group_id
+  private_subnet_ids    = module.network.app_subnet_ids
+
+  # ECS Instance Sizing
+  ecs_min_size         = var.ecs_min_size
+  ecs_max_size         = var.ecs_max_size
+  ecs_desired_capacity = var.ecs_desired_capacity
+
+  # Container Images from ECR
+  frontend_image = module.ecr.frontend_repository_url
+  backend_image  = module.ecr.backend_repository_url
+
+  # ECS Service Configuration
+  frontend_desired_count = var.frontend_desired_count
+  backend_desired_count  = var.backend_desired_count
+
+  # Target Groups for Load Balancer
+  frontend_target_group_arn = module.loadbalancer.target_group_arn
+  backend_target_group_arn  = module.loadbalancer.backend_target_group_arn
+
+  # Database Connection
+  db_endpoint = replace(module.database.db_endpoint, ":5432", "")
+  db_username = var.db_username
+  db_password = var.db_password
+  db_name     = var.db_name
+
+  log_retention_days = var.log_retention_days
 }
 
 # Monitoring Module
@@ -120,9 +135,9 @@ module "monitoring" {
   alb_arn_suffix          = module.loadbalancer.alb_arn_suffix
   target_group_arn_suffix = module.loadbalancer.target_group_arn_suffix
 
-  # Auto Scaling Groups
-  web_asg_name = module.compute.web_asg_name
-  app_asg_name = module.compute.app_asg_name
+  # ECS Auto Scaling Groups (replacing old ASG)
+  web_asg_name = module.ecs.ecs_asg_name
+  app_asg_name = module.ecs.ecs_asg_name
 
   # RDS Configuration
   db_instance_id = module.database.db_instance_id
@@ -144,4 +159,3 @@ module "cdn" {
   price_class        = var.cdn_price_class
   certificate_arn    = var.cdn_certificate_arn
 }
-

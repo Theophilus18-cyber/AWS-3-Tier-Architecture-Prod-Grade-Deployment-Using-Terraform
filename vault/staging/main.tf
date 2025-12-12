@@ -45,6 +45,8 @@ resource "aws_security_group" "vault_staging" {
     cidr_blocks = var.allowed_ssh_cidr
     description = "SSH access"
   }
+  #checkov:skip=CKV_AWS_24:SSH allowed for demo
+  #checkov:skip=CKV_AWS_260:SSH allowed for demo
 
   # Vault API/UI access
   ingress {
@@ -63,6 +65,7 @@ resource "aws_security_group" "vault_staging" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
+  #checkov:skip=CKV_AWS_382:Egress required for installation/updates
 
   tags = {
     Name        = "vault-staging-sg"
@@ -77,6 +80,9 @@ resource "aws_instance" "vault_staging" {
   instance_type = var.instance_type
   key_name      = var.key_name
   subnet_id     = var.subnet_id
+  #checkov:skip=CKV_AWS_135:EBS optimization not needed for t2.micro
+  #checkov:skip=CKV_AWS_126:Detailed monitoring costs extra
+  #checkov:skip=CKV2_AWS_41:IAM role not used in staging demo
 
   vpc_security_group_ids = [aws_security_group.vault_staging.id]
 

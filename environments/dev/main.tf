@@ -10,17 +10,8 @@ module "main" {
   private_subnets    = var.private_subnets
   availability_zones = var.availability_zones
 
-  ami_id        = var.ami_id
   instance_type = var.instance_type
   key_name      = var.key_name
-
-  cpu_threshold        = var.cpu_threshold
-  web_min_size         = var.web_min_size
-  web_max_size         = var.web_max_size
-  web_desired_capacity = var.web_desired_capacity
-  app_min_size         = var.app_min_size
-  app_max_size         = var.app_max_size
-  app_desired_capacity = var.app_desired_capacity
 
   db_name           = var.db_name
   db_username       = var.db_username
@@ -35,5 +26,11 @@ module "main" {
 
   cdn_price_class     = var.cdn_price_class
   cdn_certificate_arn = var.cdn_certificate_arn
-  dockerhub_username  = var.dockerhub_username
+
+  # ECS Configuration
+  ecs_min_size           = var.ecs_min_size
+  ecs_max_size           = var.ecs_max_size
+  ecs_desired_capacity   = var.ecs_desired_capacity
+  frontend_desired_count = var.frontend_desired_count
+  backend_desired_count  = var.backend_desired_count
 }

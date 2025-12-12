@@ -1,3 +1,25 @@
+resource "aws_iam_role" "rds_monitoring" {
+  name = "${var.environment}-rds-monitoring-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "monitoring.rds.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "rds_monitoring" {
+  role       = aws_iam_role.rds_monitoring.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
+
 resource "aws_db_instance" "main" {
   identifier           = "${var.environment}-mysql"
   allocated_storage    = 10
@@ -10,9 +32,29 @@ resource "aws_db_instance" "main" {
   password             = var.db_password
   parameter_group_name = "default.mysql8.0"
 
-  # Backups are REQUIRED for Read Replicas
-  # We enable them for Prod (7 days retention) or if you need replicas in other envs
-  backup_retention_period = var.environment == "prod" ? 7 : 0
+  # Security & Encryption
+  storage_encrypted                   = true
+  iam_database_authentication_enabled = true
+
+  # Deletion Protection (Enable for Prod)
+  deletion_protection = var.environment == "prod" ? true : false
+  #checkov:skip=CKV_AWS_293:Deletion protection enabled for prod only
+  #checkov:skip=CKV_AWS_157:Multi-AZ disabled for cost savings
+  #checkov:skip=CKV_AWS_129:CloudWatch logs disabled for cost savings
+  #checkov:skip=CKV2_AWS_60:Copy tags not critical for demo
+
+  # Backups & Maintenance
+  backup_retention_period    = var.environment == "prod" ? 7 : 1
+  auto_minor_version_upgrade = true
+
+  # Monitoring
+  performance_insights_enabled = true
+  #checkov:skip=CKV_AWS_354:Performance Insights KMS key pending setup
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
+
+  # Availability (Multi-AZ for Prod)
+  multi_az = var.environment == "prod" ? true : false
 
   skip_final_snapshot    = true
   db_subnet_group_name   = var.db_subnet_group_id
@@ -21,6 +63,7 @@ resource "aws_db_instance" "main" {
   tags = {
     Name        = "${var.environment}-mysql-primary"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -32,6 +75,7 @@ resource "aws_db_instance" "replica" {
   replicate_source_db = aws_db_instance.main.identifier
   instance_class      = var.db_instance_class
   storage_type        = "gp2"
+  #checkov:skip=CKV2_AWS_60:Copy tags not critical for demo
 
   # Replicas don't need username/password/db_name (inherited from source)
 

@@ -14,8 +14,15 @@ variable "web_security_group_id" {
 }
 
 variable "web_asg_id" {
-  description = "ID of web tier auto scaling group"
+  description = "ID of web tier auto scaling group (not used with ECS)"
   type        = string
+  default     = ""
+}
+
+variable "use_ecs" {
+  description = "Whether to use ECS instead of ASG for container management"
+  type        = bool
+  default     = true
 }
 
 variable "environment" {
@@ -29,3 +36,9 @@ variable "alb_certificate_arn" {
   type        = string
 }
 */
+
+variable "enable_deletion_protection" {
+  description = "Enable deletion protection for ALB"
+  type        = bool
+  default     = false
+}

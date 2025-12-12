@@ -141,3 +141,17 @@ If you encounter push protection errors due to detected secrets:
 ## License
 
 This project is licensed under the MIT License. 
+
+
+
+
+
+#saved for documentation for env in dev staging prod; do
+  echo "=== $env ===";
+  aws ec2 describe-vpcs --filters "Name=tag:Environment,Values=$env" \
+    --query "Vpcs[].{VpcId:VpcId,CIDR:CidrBlock}" --output table;
+  aws ec2 describe-subnets --filters "Name=tag:Environment,Values=$env" \
+    --query "Subnets[].{SubnetId:SubnetId,AZ:AvailabilityZone,CIDR:CidrBlock,Name:Tags[?Key=='Name']|[0].Value}" \
+    --output table;
+  echo;
+done 

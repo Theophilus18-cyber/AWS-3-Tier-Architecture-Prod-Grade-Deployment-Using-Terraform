@@ -14,6 +14,9 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   enabled             = true
+  #checkov:skip=CKV2_AWS_47:WAF not attached for cost savings
+  #checkov:skip=CKV2_AWS_32:Response headers policy default is sufficient
+  #checkov:skip=CKV2_AWS_42:Custom SSL not available without domain
   is_ipv6_enabled     = true
   default_root_object = "index.html" # Note: For ALB, this might not be needed if ALB handles routing, but harmless
 

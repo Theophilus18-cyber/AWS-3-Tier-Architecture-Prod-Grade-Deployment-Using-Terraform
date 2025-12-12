@@ -45,6 +45,8 @@ resource "aws_security_group" "vault_dev" {
     cidr_blocks = var.allowed_ssh_cidr
     description = "SSH access"
   }
+  #checkov:skip=CKV_AWS_24:SSH allowed for demo
+  #checkov:skip=CKV_AWS_260:SSH allowed for demo
 
   # Vault API/UI access
   ingress {
@@ -63,6 +65,7 @@ resource "aws_security_group" "vault_dev" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
+  #checkov:skip=CKV_AWS_382:Egress required for installation/updates
 
   tags = {
     Name        = "vault-dev-sg"

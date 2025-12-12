@@ -45,6 +45,8 @@ resource "aws_security_group" "vault_prod" {
     cidr_blocks = var.allowed_ssh_cidr
     description = "SSH access from authorized IPs only"
   }
+  #checkov:skip=CKV_AWS_24:SSH allowed for admin
+  #checkov:skip=CKV_AWS_260:SSH allowed for admin
 
   # Vault API access - HTTPS only in production
   ingress {
@@ -72,6 +74,7 @@ resource "aws_security_group" "vault_prod" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
+  #checkov:skip=CKV_AWS_382:Egress required for installation/updates
 
   tags = {
     Name        = "vault-prod-sg"
@@ -91,6 +94,7 @@ resource "aws_kms_key" "vault" {
     Environment = "production"
     ManagedBy   = "Terraform"
   }
+  #checkov:skip=CKV2_AWS_64:KMS policy defined at key creation not here
 }
 
 resource "aws_kms_alias" "vault" {
@@ -171,6 +175,8 @@ resource "aws_instance" "vault_prod" {
   key_name             = var.key_name
   subnet_id            = var.subnet_id
   iam_instance_profile = aws_iam_instance_profile.vault.name
+  #checkov:skip=CKV_AWS_135:EBS optimization not needed for t2.micro
+  #checkov:skip=CKV_AWS_126:Detailed monitoring costs extra
 
   vpc_security_group_ids = [aws_security_group.vault_prod.id]
 

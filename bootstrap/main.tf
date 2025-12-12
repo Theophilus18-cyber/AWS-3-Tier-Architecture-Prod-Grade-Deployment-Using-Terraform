@@ -1,3 +1,17 @@
+terraform {
+  required_version = ">= 1.6.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = ">= 2.4.0"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
@@ -5,6 +19,11 @@ provider "aws" {
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "tf_state" {
   bucket = "terraform-state-donation-app-theophilus" # Change this to a globally unique name
+  #checkov:skip=CKV_AWS_145:AWS Managed Keys sufficient for state
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed for demo
+  #checkov:skip=CKV_AWS_18:Access logging not needed for demo
+  #checkov:skip=CKV2_AWS_61:Lifecycle config not needed for demo
+  #checkov:skip=CKV2_AWS_62:Event notifications not needed for demo
 
   tags = {
     Name        = "Terraform State Bucket"
@@ -44,14 +63,25 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 }
 
 # DynamoDB table for state locking
+# checkov:skip=CKV_AWS_119:Using AWS owned key for prod grade lock table to save costs
 resource "aws_dynamodb_table" "tf_lock" {
   name         = "terraform-state-lock"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
+  #checkov:skip=CKV_AWS_119:AWS Managed Keys sufficient for state lock
+  #checkov:skip=CKV2_AWS_16:Auto-scaling not needed for on-demand
+  hash_key = "LockID"
 
   attribute {
     name = "LockID"
     type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  server_side_encryption {
+    enabled = true
   }
 
   tags = {

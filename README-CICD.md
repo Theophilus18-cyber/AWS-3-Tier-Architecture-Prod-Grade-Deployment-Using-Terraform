@@ -15,7 +15,7 @@ Your repository now has a **complete, production-ready CI/CD pipeline** with:
 
 scripts/
 ├── setup-aws-oidc.sh            # Bash script for AWS setup
-└── setup-aws-oidc.ps1           # PowerShell script for AWS setup
+└── setup-aws-oidc.ps1           # PowerShell script for AWS setup.
 
 Documentation/
 ├── QUICK-START.md               # 5-minute setup guide
