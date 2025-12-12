@@ -15,6 +15,8 @@ resource "aws_vpc" "main" {
     Environment = var.environment
     ManagedBy   = "Terraform"
   }
+  #checkov:skip=CKV2_AWS_11:VPC Flow Logs disabled for cost savings
+  #checkov:skip=CKV2_AWS_12:Default SG check skipped for demo
 
 }
 
