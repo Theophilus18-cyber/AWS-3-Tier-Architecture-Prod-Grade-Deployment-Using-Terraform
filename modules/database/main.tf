@@ -58,6 +58,7 @@ resource "aws_db_instance" "main" {
   tags = {
     Name        = "${var.environment}-mysql-primary"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 

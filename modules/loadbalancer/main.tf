@@ -20,6 +20,7 @@ resource "aws_lb_target_group" "web" {
   tags = {
     Name        = "${var.environment}-web-tg"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -45,6 +46,7 @@ resource "aws_lb_target_group" "backend" {
   tags = {
     Name        = "${var.environment}-backend-tg"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -66,6 +68,7 @@ resource "aws_lb" "web" {
   tags = {
     Name        = "${var.environment}-web-alb"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 

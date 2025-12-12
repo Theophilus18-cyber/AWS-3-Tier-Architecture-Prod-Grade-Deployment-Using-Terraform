@@ -31,6 +31,7 @@ resource "aws_security_group" "web" {
   tags = {
     Name        = "${var.environment}-web-sg"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -59,6 +60,7 @@ resource "aws_security_group" "app" {
   tags = {
     Name        = "${var.environment}-app-sg"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -87,6 +89,7 @@ resource "aws_security_group" "database" {
   tags = {
     Name        = "${var.environment}-db-sg"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -125,5 +128,6 @@ resource "aws_security_group" "ecs" {
   tags = {
     Name        = "${var.environment}-ecs-sg"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }

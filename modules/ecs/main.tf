@@ -10,6 +10,7 @@ resource "aws_ecs_cluster" "main" {
   tags = {
     Name        = "${var.environment}-donation-app-cluster"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -32,6 +33,7 @@ resource "aws_ecs_capacity_provider" "main" {
   tags = {
     Name        = "${var.environment}-ecs-capacity-provider"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -66,6 +68,7 @@ resource "aws_iam_role" "ecs_task_execution" {
   tags = {
     Name        = "${var.environment}-ecs-task-execution-role"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -94,6 +97,7 @@ resource "aws_iam_role" "ecs_task" {
   tags = {
     Name        = "${var.environment}-ecs-task-role"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -117,6 +121,7 @@ resource "aws_iam_role" "ecs_instance" {
   tags = {
     Name        = "${var.environment}-ecs-instance-role"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -137,6 +142,7 @@ resource "aws_iam_instance_profile" "ecs_instance" {
   tags = {
     Name        = "${var.environment}-ecs-instance-profile"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -173,6 +179,7 @@ resource "aws_launch_template" "ecs" {
     tags = {
       Name        = "${var.environment}-ecs-instance"
       Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   }
 
@@ -228,6 +235,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
   tags = {
     Name        = "${var.environment}-ecs-logs"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -246,6 +254,7 @@ resource "aws_ecs_task_definition" "frontend" {
       cpu       = 256
       memory    = 512
       essential = true
+      readonlyRootFilesystem = true
 
       portMappings = [
         {
@@ -269,6 +278,7 @@ resource "aws_ecs_task_definition" "frontend" {
   tags = {
     Name        = "${var.environment}-frontend-task"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -287,6 +297,7 @@ resource "aws_ecs_task_definition" "backend" {
       cpu       = 256
       memory    = 512
       essential = true
+      readonlyRootFilesystem = true
 
       portMappings = [
         {
@@ -325,6 +336,7 @@ resource "aws_ecs_task_definition" "backend" {
   tags = {
     Name        = "${var.environment}-backend-task"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -358,6 +370,7 @@ resource "aws_ecs_service" "frontend" {
   tags = {
     Name        = "${var.environment}-frontend-service"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 
   depends_on = [aws_ecs_cluster_capacity_providers.main]
@@ -393,6 +406,7 @@ resource "aws_ecs_service" "backend" {
   tags = {
     Name        = "${var.environment}-backend-service"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 
   depends_on = [aws_ecs_cluster_capacity_providers.main]

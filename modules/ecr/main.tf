@@ -4,7 +4,11 @@
 # Backend ECR Repository
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.environment}-donation-app-backend"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
+
+  encryption_configuration {
+    encryption_type = "KMS"
+  }
 
   image_scanning_configuration {
     scan_on_push = true
@@ -13,13 +17,18 @@ resource "aws_ecr_repository" "backend" {
   tags = {
     Name        = "${var.environment}-donation-app-backend"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
 # Frontend ECR Repository
 resource "aws_ecr_repository" "frontend" {
   name                 = "${var.environment}-donation-app-frontend"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
+
+  encryption_configuration {
+    encryption_type = "KMS"
+  }
 
   image_scanning_configuration {
     scan_on_push = true
@@ -28,6 +37,7 @@ resource "aws_ecr_repository" "frontend" {
   tags = {
     Name        = "${var.environment}-donation-app-frontend"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
