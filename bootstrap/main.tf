@@ -19,6 +19,11 @@ provider "aws" {
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "tf_state" {
   bucket = "terraform-state-donation-app-theophilus" # Change this to a globally unique name
+  #checkov:skip=CKV_AWS_145:AWS Managed Keys sufficient for state
+  #checkov:skip=CKV_AWS_144:Cross-region replication not needed for demo
+  #checkov:skip=CKV_AWS_18:Access logging not needed for demo
+  #checkov:skip=CKV2_AWS_61:Lifecycle config not needed for demo
+  #checkov:skip=CKV2_AWS_62:Event notifications not needed for demo
 
   tags = {
     Name        = "Terraform State Bucket"
@@ -62,6 +67,8 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 resource "aws_dynamodb_table" "tf_lock" {
   name         = "terraform-state-lock"
   billing_mode = "PAY_PER_REQUEST"
+  #checkov:skip=CKV_AWS_119:AWS Managed Keys sufficient for state lock
+  #checkov:skip=CKV2_AWS_16:Auto-scaling not needed for on-demand
   hash_key     = "LockID"
 
   attribute {

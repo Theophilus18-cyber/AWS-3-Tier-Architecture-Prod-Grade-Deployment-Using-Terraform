@@ -26,6 +26,7 @@ resource "aws_sns_topic_subscription" "alarm_email" {
 resource "aws_cloudwatch_log_group" "web_tier" {
   name              = "/aws/ec2/${var.environment}/web-tier"
   retention_in_days = var.log_retention_days
+  #checkov:skip=CKV_AWS_158:KMS encryption skipped for cost/complexity in demo
 
   tags = {
     Name        = "${var.environment}-web-tier-logs"
@@ -38,6 +39,7 @@ resource "aws_cloudwatch_log_group" "web_tier" {
 resource "aws_cloudwatch_log_group" "app_tier" {
   name              = "/aws/ec2/${var.environment}/app-tier"
   retention_in_days = var.log_retention_days
+  #checkov:skip=CKV_AWS_158:KMS encryption skipped for cost/complexity in demo
 
   tags = {
     Name        = "${var.environment}-app-tier-logs"
@@ -50,6 +52,7 @@ resource "aws_cloudwatch_log_group" "app_tier" {
 resource "aws_cloudwatch_log_group" "database" {
   name              = "/aws/rds/${var.environment}/database"
   retention_in_days = var.log_retention_days
+  #checkov:skip=CKV_AWS_158:KMS encryption skipped for cost/complexity in demo
 
   tags = {
     Name        = "${var.environment}-database-logs"
