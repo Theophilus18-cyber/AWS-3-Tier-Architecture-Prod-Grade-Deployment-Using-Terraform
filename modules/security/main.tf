@@ -3,7 +3,7 @@ resource "aws_security_group" "web" {
   name        = "${var.environment}-web-sg"
   description = "Security group for web tier"
   vpc_id      = var.vpc_id
-  
+
   ingress {
     from_port   = 80
     to_port     = 80
@@ -11,7 +11,7 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow HTTP from anywhere"
   }
-  
+
   ingress {
     from_port   = 443
     to_port     = 443
@@ -19,7 +19,7 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow HTTPS from anywhere"
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -27,7 +27,7 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
-  
+
   tags = {
     Name        = "${var.environment}-web-sg"
     Environment = var.environment
@@ -39,7 +39,7 @@ resource "aws_security_group" "app" {
   name        = "${var.environment}-app-sg"
   description = "Security group for app tier"
   vpc_id      = var.vpc_id
-  
+
   ingress {
     from_port       = 0
     to_port         = 0
@@ -47,7 +47,7 @@ resource "aws_security_group" "app" {
     security_groups = [aws_security_group.web.id]
     description     = "Allow all traffic from web tier"
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -55,7 +55,7 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
-  
+
   tags = {
     Name        = "${var.environment}-app-sg"
     Environment = var.environment
@@ -67,7 +67,7 @@ resource "aws_security_group" "database" {
   name        = "${var.environment}-db-sg"
   description = "Security group for database tier"
   vpc_id      = var.vpc_id
-  
+
   ingress {
     from_port       = 3306
     to_port         = 3306
@@ -75,7 +75,7 @@ resource "aws_security_group" "database" {
     security_groups = [aws_security_group.app.id]
     description     = "Allow MySQL traffic from app tier"
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -83,7 +83,7 @@ resource "aws_security_group" "database" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
-  
+
   tags = {
     Name        = "${var.environment}-db-sg"
     Environment = var.environment
@@ -95,7 +95,7 @@ resource "aws_security_group" "ecs" {
   name        = "${var.environment}-ecs-sg"
   description = "Security group for ECS instances"
   vpc_id      = var.vpc_id
-  
+
   # Allow traffic from ALB on dynamic port range (ECS uses dynamic ports)
   ingress {
     from_port       = 32768
@@ -113,7 +113,7 @@ resource "aws_security_group" "ecs" {
     self        = true
     description = "Allow all traffic within ECS cluster"
   }
-  
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -121,7 +121,7 @@ resource "aws_security_group" "ecs" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
-  
+
   tags = {
     Name        = "${var.environment}-ecs-sg"
     Environment = var.environment

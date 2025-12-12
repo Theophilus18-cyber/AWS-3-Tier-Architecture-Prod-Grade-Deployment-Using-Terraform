@@ -183,13 +183,13 @@ resource "aws_launch_template" "ecs" {
 
 # Auto Scaling Group for ECS Instances
 resource "aws_autoscaling_group" "ecs" {
-  name                 = "${var.environment}-ecs-asg"
-  min_size             = var.ecs_min_size
-  max_size             = var.ecs_max_size
-  desired_capacity     = var.ecs_desired_capacity
-  vpc_zone_identifier  = var.private_subnet_ids
-  health_check_type    = "EC2"
-  termination_policies = ["OldestInstance"]
+  name                  = "${var.environment}-ecs-asg"
+  min_size              = var.ecs_min_size
+  max_size              = var.ecs_max_size
+  desired_capacity      = var.ecs_desired_capacity
+  vpc_zone_identifier   = var.private_subnet_ids
+  health_check_type     = "EC2"
+  termination_policies  = ["OldestInstance"]
   protect_from_scale_in = false
 
   launch_template {
@@ -246,11 +246,11 @@ resource "aws_ecs_task_definition" "frontend" {
       cpu       = 256
       memory    = 512
       essential = true
-      
+
       portMappings = [
         {
           containerPort = 80
-          hostPort      = 0  # Dynamic port mapping
+          hostPort      = 0 # Dynamic port mapping
           protocol      = "tcp"
         }
       ]
@@ -287,11 +287,11 @@ resource "aws_ecs_task_definition" "backend" {
       cpu       = 256
       memory    = 512
       essential = true
-      
+
       portMappings = [
         {
           containerPort = 5000
-          hostPort      = 0  # Dynamic port mapping
+          hostPort      = 0 # Dynamic port mapping
           protocol      = "tcp"
         }
       ]

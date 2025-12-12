@@ -79,7 +79,7 @@ module "loadbalancer" {
   vpc_id                = module.network.vpc_id
   public_subnet_ids     = module.network.public_subnet_ids
   web_security_group_id = module.security.web_security_group_id
-  use_ecs               = true  # Using ECS, not ASG
+  use_ecs               = true # Using ECS, not ASG
   environment           = var.environment
 }
 
