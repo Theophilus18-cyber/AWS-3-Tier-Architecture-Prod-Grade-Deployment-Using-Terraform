@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Heart, DollarSign, Users, ArrowRight, Gift, Calendar } from 'lucide-react';
 import axios from 'axios';
 
-// API configuration..
+// API configuration...
 
 //testing deployement.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';

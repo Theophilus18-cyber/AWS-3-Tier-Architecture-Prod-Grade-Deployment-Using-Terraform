@@ -15,10 +15,20 @@ output "alb_arn_suffix" {
 
 output "target_group_arn" {
   value       = aws_lb_target_group.web.arn
-  description = "The ARN of the Target Group"
+  description = "The ARN of the Frontend Target Group"
 }
 
 output "target_group_arn_suffix" {
   value       = aws_lb_target_group.web.arn_suffix
-  description = "The ARN suffix of the Target Group (for CloudWatch)"
+  description = "The ARN suffix of the Frontend Target Group (for CloudWatch)"
+}
+
+output "backend_target_group_arn" {
+  value       = aws_lb_target_group.backend.arn
+  description = "The ARN of the Backend Target Group"
+}
+
+output "backend_target_group_arn_suffix" {
+  value       = aws_lb_target_group.backend.arn_suffix
+  description = "The ARN suffix of the Backend Target Group (for CloudWatch)"
 }

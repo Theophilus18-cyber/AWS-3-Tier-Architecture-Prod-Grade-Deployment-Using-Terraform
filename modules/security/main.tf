@@ -89,3 +89,41 @@ resource "aws_security_group" "database" {
     Environment = var.environment
   }
 }
+
+# ECS Security Group
+resource "aws_security_group" "ecs" {
+  name        = "${var.environment}-ecs-sg"
+  description = "Security group for ECS instances"
+  vpc_id      = var.vpc_id
+  
+  # Allow traffic from ALB on dynamic port range (ECS uses dynamic ports)
+  ingress {
+    from_port       = 32768
+    to_port         = 65535
+    protocol        = "tcp"
+    security_groups = [aws_security_group.web.id]
+    description     = "Allow traffic from ALB on dynamic ports"
+  }
+
+  # Allow traffic from within ECS cluster
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+    description = "Allow all traffic within ECS cluster"
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+  
+  tags = {
+    Name        = "${var.environment}-ecs-sg"
+    Environment = var.environment
+  }
+}

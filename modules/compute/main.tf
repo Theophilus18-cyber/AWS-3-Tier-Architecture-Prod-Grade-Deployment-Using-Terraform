@@ -7,6 +7,10 @@ resource "aws_launch_template" "web" {
 
   vpc_security_group_ids = [var.web_security_group_id]
 
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm_profile.name
+  }
+
   user_data = base64encode(templatefile("${path.module}/scripts/user.sh", {
     environment        = var.environment
     db_endpoint        = var.db_endpoint
@@ -39,6 +43,10 @@ resource "aws_launch_template" "app" {
   key_name      = var.key_name
 
   vpc_security_group_ids = [var.app_security_group_id]
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm_profile.name
+  }
 
   user_data = base64encode(templatefile("${path.module}/scripts/user.sh", {
     environment        = var.environment

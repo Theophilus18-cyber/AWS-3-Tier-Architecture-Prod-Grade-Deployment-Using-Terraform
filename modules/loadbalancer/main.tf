@@ -1,9 +1,10 @@
-# Target Group for ALB
+# Target Group for ALB (Frontend)
 resource "aws_lb_target_group" "web" {
-  name     = "${var.environment}-web-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
+  name        = "${var.environment}-web-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
   
   health_check {
     enabled             = true
@@ -22,8 +23,34 @@ resource "aws_lb_target_group" "web" {
   }
 }
 
-# Attachment of ASG to Target Group
+# Target Group for Backend API
+resource "aws_lb_target_group" "backend" {
+  name        = "${var.environment}-backend-tg"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
+  
+  health_check {
+    enabled             = true
+    interval            = 10
+    path                = "/api/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+  
+  tags = {
+    Name        = "${var.environment}-backend-tg"
+    Environment = var.environment
+  }
+}
+
+# Attachment of ASG to Target Group (only used if not using ECS)
 resource "aws_autoscaling_attachment" "web" {
+  count                  = var.use_ecs ? 0 : 1
   autoscaling_group_name = var.web_asg_id
   lb_target_group_arn    = aws_lb_target_group.web.arn
 }
@@ -42,7 +69,7 @@ resource "aws_lb" "web" {
   }
 }
 
-# ALB Listener
+# ALB Listener (default to frontend)
 resource "aws_lb_listener" "web" {
   load_balancer_arn = aws_lb.web.arn
   port              = 80
@@ -51,6 +78,24 @@ resource "aws_lb_listener" "web" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+# ALB Listener Rule for Backend API
+# Routes /api/* requests to the backend target group
+resource "aws_lb_listener_rule" "backend_api" {
+  listener_arn = aws_lb_listener.web.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*", "/api"]
+    }
   }
 }
 

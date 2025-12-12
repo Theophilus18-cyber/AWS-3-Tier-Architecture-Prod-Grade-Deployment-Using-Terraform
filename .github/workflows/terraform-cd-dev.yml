@@ -9,8 +9,8 @@ on:
       - '**.tfvars'
       - 'environments/dev/**'
       - 'vault/dev/**'
-      - 'donation-app/**'  # Trigger on app changes too
-      - '.github/workflows/**'  # Trigger on workflow changes
+      - 'donation-app/**'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
@@ -21,50 +21,142 @@ permissions:
 env:
   AWS_REGION: us-east-1
   TERRAFORM_VERSION: 1.6.0
-  DOCKER_IMAGE_BACKEND: ${{ secrets.DOCKERHUB_USERNAME }}/donation-app-backend
-  DOCKER_IMAGE_FRONTEND: ${{ secrets.DOCKERHUB_USERNAME }}/donation-app-frontend
+  ECS_CLUSTER: dev-donation-app-cluster
+  FRONTEND_SERVICE: dev-frontend-service
+  BACKEND_SERVICE: dev-backend-service
 
 jobs:
-  # Job 1: Build and Push Docker Images
+  # Job 1: Build and Push Docker Images to ECR
   build-and-push:
-    name: Build & Push Docker Images
+    name: Build & Push to ECR
     runs-on: ubuntu-latest
+    environment: dev
+    outputs:
+      backend_image: ${{ steps.build-backend.outputs.image }}
+      frontend_image: ${{ steps.build-frontend.outputs.image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get ECR Repository URLs
+        id: ecr-urls
+        run: |
+          BACKEND_REPO=$(aws ecr describe-repositories --repository-names dev-donation-app-backend --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
+          FRONTEND_REPO=$(aws ecr describe-repositories --repository-names dev-donation-app-frontend --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
+          
+          if [ -z "$BACKEND_REPO" ] || [ -z "$FRONTEND_REPO" ]; then
+            echo "ECR repositories not found. Please run terraform apply first."
+            exit 1
+          fi
+          
+          echo "backend_repo=$BACKEND_REPO" >> $GITHUB_OUTPUT
+          echo "frontend_repo=$FRONTEND_REPO" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Backend
+        id: build-backend
         uses: docker/build-push-action@v5
         with:
           context: ./donation-app/backend
           push: true
-          tags: ${{ env.DOCKER_IMAGE_BACKEND }}:latest,${{ env.DOCKER_IMAGE_BACKEND }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_BACKEND }}:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_BACKEND }}:buildcache,mode=max
+          tags: |
+            ${{ steps.ecr-urls.outputs.backend_repo }}:latest
+            ${{ steps.ecr-urls.outputs.backend_repo }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push Frontend
+        id: build-frontend
         uses: docker/build-push-action@v5
         with:
           context: ./donation-app/frontend
           push: true
-          tags: ${{ env.DOCKER_IMAGE_FRONTEND }}:latest,${{ env.DOCKER_IMAGE_FRONTEND }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_FRONTEND }}:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_FRONTEND }}:buildcache,mode=max
+          tags: |
+            ${{ steps.ecr-urls.outputs.frontend_repo }}:latest
+            ${{ steps.ecr-urls.outputs.frontend_repo }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # Job 2: Plan for DEV
-  plan-dev:
-    name:  Plan DEV Infrastructure
+      - name: Output image URIs
+        run: |
+          echo "Backend image: ${{ steps.ecr-urls.outputs.backend_repo }}:${{ github.sha }}"
+          echo "Frontend image: ${{ steps.ecr-urls.outputs.frontend_repo }}:${{ github.sha }}"
+
+  # Job 2: Deploy to ECS
+  deploy-to-ecs:
+    name: Deploy to ECS
     runs-on: ubuntu-latest
-    needs: build-and-push  # Wait for images to be ready
+    needs: build-and-push
+    environment: dev
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update Frontend Service
+        run: |
+          echo "Updating frontend service..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.FRONTEND_SERVICE }} \
+            --force-new-deployment \
+            --query 'service.serviceName' \
+            --output text
+
+      - name: Update Backend Service
+        run: |
+          echo "Updating backend service..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.BACKEND_SERVICE }} \
+            --force-new-deployment \
+            --query 'service.serviceName' \
+            --output text
+
+      - name: Wait for Frontend deployment
+        run: |
+          echo "Waiting for frontend service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.FRONTEND_SERVICE }} || true
+
+      - name: Wait for Backend deployment
+        run: |
+          echo "Waiting for backend service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.BACKEND_SERVICE }} || true
+
+      - name: Deployment Summary
+        run: |
+          echo "## DEV ECS Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services Updated:" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${{ env.FRONTEND_SERVICE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${{ env.BACKEND_SERVICE }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Cluster: ${{ env.ECS_CLUSTER }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Deployed commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: Plan for DEV Infrastructure
+  plan-dev:
+    name: Plan DEV Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
     environment: dev
     outputs:
       plan_exitcode: ${{ steps.plan.outputs.exitcode }}
@@ -151,9 +243,9 @@ jobs:
           path: vault/dev/tfplan-vault
           retention-days: 5
 
-  # Job 3: Apply to DEV (Auto-deploy)
+  # Job 4: Apply to DEV (Auto-deploy)
   apply-dev:
-    name:  Deploy to DEV
+    name: Deploy to DEV
     runs-on: ubuntu-latest
     needs: plan-dev
     if: needs.plan-dev.outputs.plan_exitcode == 2
@@ -204,15 +296,16 @@ jobs:
       - name: Get Outputs
         id: outputs
         run: |
-          echo "vpc_id=$(terraform output -raw vpc_id)" >> $GITHUB_OUTPUT
-          echo "vault_ip=$(terraform output -raw vault_public_ip)" >> $GITHUB_OUTPUT
+          echo "ecs_cluster=$(terraform output -raw ecs_cluster_name)" >> $GITHUB_OUTPUT
+          echo "alb_dns=$(terraform output -raw alb_dns_name)" >> $GITHUB_OUTPUT
         working-directory: environments/dev
 
-  # Job 4: Health Checks
+  # Job 5: Health Checks
   health-check-dev:
-    name:  Health Check DEV
+    name: Health Check DEV
     runs-on: ubuntu-latest
-    needs: apply-dev
+    needs: [deploy-to-ecs, apply-dev]
+    if: always() && (needs.deploy-to-ecs.result == 'success' || needs.apply-dev.result == 'success')
     steps:
       - name: Wait for infrastructure to stabilize
         run: sleep 60
@@ -223,29 +316,26 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Check EC2 Instances Status
+      - name: Check ECS Services Status
         run: |
-          echo "Checking EC2 instances in DEV environment..."
-          aws ec2 describe-instances \
-            --filters "Name=tag:Environment,Values=dev" \
-            --query 'Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key==`Name`].Value|[0]]' \
+          echo "Checking ECS services in DEV environment..."
+          aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.FRONTEND_SERVICE }} ${{ env.BACKEND_SERVICE }} \
+            --query 'services[*].[serviceName,runningCount,desiredCount,status]' \
             --output table
 
-      - name: Check Vault Health (if deployed)
+      - name: Check ECS Tasks
         run: |
-          VAULT_IP=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=vault-dev-server" \
-            --query 'Reservations[0].Instances[0].PublicIpAddress' \
-            --output text)
-          
-          if [ "$VAULT_IP" != "None" ]; then
-            echo "Checking Vault health at $VAULT_IP..."
-            curl -f http://$VAULT_IP:8200/v1/sys/health || echo "Vault not ready yet"
-          fi
+          echo "Checking running tasks..."
+          aws ecs list-tasks \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --query 'taskArns' \
+            --output table
 
       - name: Deployment Summary
         run: |
-          echo "##  DEV Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "## DEV Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Deployment Details:" >> $GITHUB_STEP_SUMMARY
           echo "- Environment: **DEV**" >> $GITHUB_STEP_SUMMARY

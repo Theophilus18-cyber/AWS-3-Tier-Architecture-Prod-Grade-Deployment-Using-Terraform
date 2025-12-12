@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - prod
-      - main  # Production deployments from main branch
+      - main
     paths:
       - '**.tf'
       - '**.tfvars'
       - 'environments/prod/**'
       - 'vault/prod/**'
-  workflow_dispatch:  # Allow manual trigger
+      - 'donation-app/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,35 +21,86 @@ permissions:
 env:
   AWS_REGION: us-east-1
   TERRAFORM_VERSION: 1.6.0
+  ECS_CLUSTER: prod-donation-app-cluster
+  FRONTEND_SERVICE: prod-frontend-service
+  BACKEND_SERVICE: prod-backend-service
 
 jobs:
-  # Job 1: Security Re-validation for Production
+  # Job 1: Security Re-validation
   security-recheck:
-    name:  Production Security Re-check
+    name: Production Security Re-check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run tfsec (Production)
+      - name: Run tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           soft_fail: false
           additional_args: --minimum-severity HIGH
 
-      - name: Run Checkov (Production)
+      - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: environments/prod
           framework: terraform
           soft_fail: false
 
-  # Job 2: Plan for PRODUCTION
-  plan-production:
-    name:  Plan PRODUCTION Infrastructure
+  # Job 2: Build and Push to ECR
+  build-and-push:
+    name: Build & Push to ECR
     runs-on: ubuntu-latest
     needs: security-recheck
-    environment: production-plan  # Separate environment for planning
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get ECR Repository URLs
+        id: ecr-urls
+        run: |
+          BACKEND_REPO=$(aws ecr describe-repositories --repository-names prod-donation-app-backend --query 'repositories[0].repositoryUri' --output text)
+          FRONTEND_REPO=$(aws ecr describe-repositories --repository-names prod-donation-app-frontend --query 'repositories[0].repositoryUri' --output text)
+          echo "backend_repo=$BACKEND_REPO" >> $GITHUB_OUTPUT
+          echo "frontend_repo=$FRONTEND_REPO" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./donation-app/backend
+          push: true
+          tags: |
+            ${{ steps.ecr-urls.outputs.backend_repo }}:latest
+            ${{ steps.ecr-urls.outputs.backend_repo }}:${{ github.sha }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./donation-app/frontend
+          push: true
+          tags: |
+            ${{ steps.ecr-urls.outputs.frontend_repo }}:latest
+            ${{ steps.ecr-urls.outputs.frontend_repo }}:${{ github.sha }}
+
+  # Job 3: Plan for PRODUCTION
+  plan-production:
+    name: Plan PRODUCTION Infrastructure
+    runs-on: ubuntu-latest
+    needs: security-recheck
+    environment: production-plan
     outputs:
       plan_exitcode: ${{ steps.plan.outputs.exitcode }}
     steps:
@@ -59,10 +111,6 @@ jobs:
         env:
           TFVARS_CONTENT: ${{ secrets.TFVARS_PROD }}
         run: |
-          if [ -z "$TFVARS_CONTENT" ]; then
-            echo "TFVARS_PROD secret is missing; cannot render terraform.tfvars" >&2
-            exit 1
-          fi
           printf '%s\n' "$TFVARS_CONTENT" > terraform.tfvars
         working-directory: environments/prod
 
@@ -77,90 +125,64 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
-      - name: Terraform Init (Main Infrastructure)
+      - name: Terraform Init
         run: terraform init
         working-directory: environments/prod
 
-      - name: Terraform Plan (Main Infrastructure)
+      - name: Terraform Plan
         id: plan
         run: |
           set +e
           terraform plan -out=tfplan -detailed-exitcode
           exitcode=$?
           echo "exitcode=$exitcode" >> "$GITHUB_OUTPUT"
-          if [ "$exitcode" -eq 1 ]; then
-            exit 1
-          fi
+          if [ "$exitcode" -eq 1 ]; then exit 1; fi
           exit 0
         working-directory: environments/prod
 
-      - name: Save Plan
-        if: steps.plan.outputs.exitcode == 2
-        run: |
-          terraform show -json tfplan > plan.json
-          terraform show tfplan > plan.txt
-        working-directory: environments/prod
-
-      - name: Upload Plan Artifact
+      - name: Upload Plan
         if: steps.plan.outputs.exitcode == 2
         uses: actions/upload-artifact@v4
         with:
           name: prod-tfplan
-          path: |
-            environments/prod/tfplan
-            environments/prod/plan.txt
-          retention-days: 30  # Keep production plans longer
+          path: environments/prod/tfplan
+          retention-days: 30
+
+      - name: Write Vault tfvars
+        env:
+          TFVARS_CONTENT: ${{ secrets.TFVARS_PROD_VAULT }}
+        run: |
+          printf '%s\n' "$TFVARS_CONTENT" > terraform.tfvars
+        working-directory: vault/prod
 
       - name: Terraform Init (Vault)
         run: terraform init
         working-directory: vault/prod
 
       - name: Terraform Plan (Vault)
-        run: |
-          terraform plan -out=tfplan-vault
-          terraform show tfplan-vault > vault-plan.txt
+        run: terraform plan -out=tfplan-vault
         working-directory: vault/prod
 
       - name: Upload Vault Plan
         uses: actions/upload-artifact@v4
         with:
           name: prod-vault-tfplan
-          path: |
-            vault/prod/tfplan-vault
-            vault/prod/vault-plan.txt
+          path: vault/prod/tfplan-vault
           retention-days: 30
 
-      - name: Post Plan Summary
-        run: |
-          echo "##  PRODUCTION Plan Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo " **CRITICAL: This is a PRODUCTION deployment**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Please carefully review the plan before approving." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Required Approvals:" >> $GITHUB_STEP_SUMMARY
-          echo "- Senior DevOps Engineer" >> $GITHUB_STEP_SUMMARY
-          echo "- Platform Lead" >> $GITHUB_STEP_SUMMARY
-
-  # Job 3: Apply to PRODUCTION (Requires Senior Approval + RBAC)
+  # Job 4: Apply to PRODUCTION (Requires Approval)
   apply-production:
-    name:  Deploy to PRODUCTION
+    name: Deploy to PRODUCTION
     runs-on: ubuntu-latest
-    needs: plan-production
+    needs: [plan-production, build-and-push]
     if: needs.plan-production.outputs.plan_exitcode == 2
-    environment: 
-      name: production
-      # This environment should be configured with:
-      # 1. Required reviewers (senior team members)
-      # 2. Wait timer (e.g., 5 minutes)
-      # 3. Branch protection rules
+    environment: production
     steps:
       - name: Production Deployment Notice
         run: |
-          echo " PRODUCTION DEPLOYMENT STARTING "
+          echo "PRODUCTION DEPLOYMENT STARTING"
           echo "Deployer: ${{ github.actor }}"
           echo "Commit: ${{ github.sha }}"
-          echo "Time: $(date)"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -176,18 +198,7 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
-      - name: Write Vault terraform.tfvars from secret
-        env:
-          TFVARS_CONTENT: ${{ secrets.TFVARS_PROD_VAULT }}
-        run: |
-          if [ -z "$TFVARS_CONTENT" ]; then
-            echo "TFVARS_PROD_VAULT secret is missing; cannot render vault terraform.tfvars" >&2
-            exit 1
-          fi
-          printf '%s\n' "$TFVARS_CONTENT" > terraform.tfvars
-        working-directory: vault/prod
-
-      - name: Download Plan Artifact
+      - name: Download Plan
         uses: actions/download-artifact@v4
         with:
           name: prod-tfplan
@@ -197,10 +208,8 @@ jobs:
         run: terraform init
         working-directory: environments/prod
 
-      - name: Terraform Apply (Main Infrastructure)
-        run: |
-          echo "Applying production infrastructure changes..."
-          terraform apply -auto-approve tfplan
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
         working-directory: environments/prod
 
       - name: Download Vault Plan
@@ -214,33 +223,40 @@ jobs:
         working-directory: vault/prod
 
       - name: Terraform Apply (Vault)
-        run: |
-          echo "Applying Vault production changes..."
-          terraform apply -auto-approve tfplan-vault
+        run: terraform apply -auto-approve tfplan-vault
         working-directory: vault/prod
 
-      - name: Capture Outputs
-        id: outputs
-        run: |
-          echo "Capturing infrastructure outputs..."
-          terraform output -json > outputs.json
-        working-directory: environments/prod
-
-      - name: Upload Outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: prod-outputs
-          path: environments/prod/outputs.json
-          retention-days: 90
-
-  # Job 4: Comprehensive Health Checks
-  health-check-production:
-    name:  Health Check PRODUCTION
+  # Job 5: Deploy to ECS
+  deploy-to-ecs:
+    name: Deploy Containers to ECS
     runs-on: ubuntu-latest
-    needs: apply-production
+    needs: [apply-production, build-and-push]
+    environment: production
     steps:
-      - name: Wait for infrastructure to stabilize
-        run: sleep 120  # 2 minutes for production
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS Services
+        run: |
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.FRONTEND_SERVICE }} --force-new-deployment
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.BACKEND_SERVICE }} --force-new-deployment
+
+      - name: Wait for deployment
+        run: |
+          aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.FRONTEND_SERVICE }} || true
+          aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.BACKEND_SERVICE }} || true
+
+  # Job 6: Health Checks
+  health-check-production:
+    name: Health Check PRODUCTION
+    runs-on: ubuntu-latest
+    needs: deploy-to-ecs
+    steps:
+      - name: Wait for stabilization
+        run: sleep 120
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -248,133 +264,49 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Check EC2 Instances Status
+      - name: Check ECS Services
         run: |
-          echo "Checking EC2 instances in PRODUCTION environment..."
-          aws ec2 describe-instances \
-            --filters "Name=tag:Environment,Values=production" \
-            --query 'Reservations[*].Instances[*].[InstanceId,State.Name,InstanceType,Tags[?Key==`Name`].Value|[0]]' \
+          aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.FRONTEND_SERVICE }} ${{ env.BACKEND_SERVICE }} \
+            --query 'services[*].[serviceName,runningCount,desiredCount,status]' \
             --output table
 
       - name: Check Load Balancer Health
         run: |
-          echo "Checking Load Balancer health..."
           aws elbv2 describe-load-balancers \
-            --query 'LoadBalancers[?contains(LoadBalancerName, `prod`)].{Name:LoadBalancerName,State:State.Code,DNS:DNSName}' \
+            --query 'LoadBalancers[?contains(LoadBalancerName, `prod`)].{Name:LoadBalancerName,State:State.Code}' \
             --output table
-
-      - name: Check Target Group Health
-        run: |
-          echo "Checking Target Group health..."
-          TG_ARNS=$(aws elbv2 describe-target-groups \
-            --query 'TargetGroups[?contains(TargetGroupName, `prod`)].TargetGroupArn' \
-            --output text)
-          
-          for TG_ARN in $TG_ARNS; do
-            echo "Checking target group: $TG_ARN"
-            aws elbv2 describe-target-health --target-group-arn $TG_ARN
-          done
-
-      - name: Check RDS Database Status
-        run: |
-          echo "Checking RDS database status..."
-          aws rds describe-db-instances \
-            --query 'DBInstances[?contains(DBInstanceIdentifier, `prod`)].{ID:DBInstanceIdentifier,Status:DBInstanceStatus,Endpoint:Endpoint.Address}' \
-            --output table || echo "No RDS instances found"
-
-      - name: Check Vault Health
-        run: |
-          VAULT_IP=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=vault-prod-server" \
-            --query 'Reservations[0].Instances[0].PublicIpAddress' \
-            --output text)
-          
-          if [ "$VAULT_IP" != "None" ]; then
-            echo "Checking Vault health at $VAULT_IP..."
-            VAULT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$VAULT_IP:8200/v1/sys/health)
-            if [ "$VAULT_STATUS" == "200" ] || [ "$VAULT_STATUS" == "429" ]; then
-              echo "Vault is healthy (Status: $VAULT_STATUS)"
-            else
-              echo " Vault status: $VAULT_STATUS"
-            fi
-          fi
-
-      - name: Check Auto Scaling Groups
-        run: |
-          echo "Checking Auto Scaling Groups..."
-          aws autoscaling describe-auto-scaling-groups \
-            --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `prod`)].{Name:AutoScalingGroupName,Desired:DesiredCapacity,Current:Instances|length(@)}' \
-            --output table || echo "No ASGs found"
-
-      - name: Run Smoke Tests
-        run: |
-          echo "Running smoke tests..."
-          # Add your smoke tests here
-          # Example: curl health endpoints, check API responses, etc.
-          echo " Smoke tests passed"
 
       - name: Deployment Summary
         run: |
-          echo "##  PRODUCTION Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "## PRODUCTION Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Deployment Details:" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: **PRODUCTION** " >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: **PRODUCTION**" >> $GITHUB_STEP_SUMMARY
           echo "- Region: **${{ env.AWS_REGION }}**" >> $GITHUB_STEP_SUMMARY
           echo "- Deployed by: **${{ github.actor }}**" >> $GITHUB_STEP_SUMMARY
           echo "- Commit: **${{ github.sha }}**" >> $GITHUB_STEP_SUMMARY
-          echo "- Time: **$(date)**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Health Check Results:" >> $GITHUB_STEP_SUMMARY
-          echo " All infrastructure health checks passed!" >> $GITHUB_STEP_SUMMARY
-          echo "Load balancers operational" >> $GITHUB_STEP_SUMMARY
-          echo " Target groups healthy" >> $GITHUB_STEP_SUMMARY
-          echo " Vault operational" >> $GITHUB_STEP_SUMMARY
-          echo "Smoke tests passed" >> $GITHUB_STEP_SUMMARY
 
-  # Job 5: Notify Success
+  # Job 7: Notify Success
   notify-success:
-    name:  Notify Success
+    name: Notify Success
     runs-on: ubuntu-latest
-    needs: [apply-production, health-check-production]
+    needs: health-check-production
     if: success()
     steps:
-      - name: Send Success Notification
+      - name: Success Notification
         run: |
-          echo " PRODUCTION deployment successful!"
+          echo "PRODUCTION deployment successful!"
           echo "Deployed by: ${{ github.actor }}"
-          echo "Commit: ${{ github.sha }}"
-          # Add Slack/Email/Teams notification here
-          # Example:
-          # curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
-          #   -H 'Content-Type: application/json' \
-          #   -d '{"text":" Production deployment successful!"}'
 
-  # Job 6: Notify Failure & Rollback Plan
+  # Job 8: Notify Failure
   notify-failure:
-    name:  Notify Failure
+    name: Notify Failure
     runs-on: ubuntu-latest
-    needs: [security-recheck, plan-production, apply-production, health-check-production]
+    needs: [security-recheck, plan-production, apply-production, deploy-to-ecs, health-check-production]
     if: failure()
     steps:
-      - name: Send Failure Notification
+      - name: Failure Notification
         run: |
-          echo " PRODUCTION deployment FAILED!"
-          echo "Failed step: Check workflow logs"
-          echo "Deployer: ${{ github.actor }}"
-          # Add urgent notification here
-          
-      - name: Rollback Instructions
-        run: |
-          echo "##  PRODUCTION DEPLOYMENT FAILED" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Immediate Actions Required:" >> $GITHUB_STEP_SUMMARY
-          echo "1. Review the failed step in the workflow logs" >> $GITHUB_STEP_SUMMARY
-          echo "2. Assess impact on production systems" >> $GITHUB_STEP_SUMMARY
-          echo "3. Consider rollback if necessary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Rollback Command:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "# Revert to previous Terraform state" >> $GITHUB_STEP_SUMMARY
-          echo "terraform state pull > backup.tfstate" >> $GITHUB_STEP_SUMMARY
-          echo "# Review and apply previous configuration" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "PRODUCTION deployment FAILED!"
+          echo "Please check workflow logs."

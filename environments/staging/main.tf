@@ -35,5 +35,11 @@ module "main" {
 
   cdn_price_class     = var.cdn_price_class
   cdn_certificate_arn = var.cdn_certificate_arn
-  dockerhub_username  = var.dockerhub_username
+
+  # ECS Configuration
+  ecs_min_size           = var.ecs_min_size
+  ecs_max_size           = var.ecs_max_size
+  ecs_desired_capacity   = var.ecs_desired_capacity
+  frontend_desired_count = var.frontend_desired_count
+  backend_desired_count  = var.backend_desired_count
 }
