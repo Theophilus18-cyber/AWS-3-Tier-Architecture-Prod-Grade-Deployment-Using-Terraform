@@ -8,7 +8,7 @@ resource "aws_cloudfront_distribution" "this" {
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "match-viewer" # Can also use "http-only" if ALB handles HTTPS termination
+      origin_protocol_policy = "http-only" # ALB listens on HTTP (80) only
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
