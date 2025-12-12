@@ -5,6 +5,7 @@ on:
     branches:
       - prod
       - main
+      - master
     paths:
       - '**.tf'
       - '**.tfvars'
