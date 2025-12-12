@@ -232,7 +232,11 @@ jobs:
   deploy-to-ecs:
     name: Deploy Containers to ECS
     runs-on: ubuntu-latest
-    needs: [apply-production, build-and-push]
+    needs: [plan-production, apply-production, build-and-push]
+    if: |
+      always() && 
+      needs.build-and-push.result == 'success' && 
+      (needs.apply-production.result == 'success' || needs.apply-production.result == 'skipped')
     environment: production
     steps:
       - name: Configure AWS Credentials
