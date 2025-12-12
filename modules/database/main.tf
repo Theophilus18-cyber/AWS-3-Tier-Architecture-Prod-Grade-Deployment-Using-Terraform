@@ -38,6 +38,10 @@ resource "aws_db_instance" "main" {
 
   # Deletion Protection (Enable for Prod)
   deletion_protection = var.environment == "prod" ? true : false
+  #checkov:skip=CKV_AWS_293:Deletion protection enabled for prod only
+  #checkov:skip=CKV_AWS_157:Multi-AZ disabled for cost savings
+  #checkov:skip=CKV_AWS_129:CloudWatch logs disabled for cost savings
+  #checkov:skip=CKV2_AWS_60:Copy tags not critical for demo
 
   # Backups & Maintenance
   backup_retention_period    = var.environment == "prod" ? 7 : 1
@@ -46,8 +50,8 @@ resource "aws_db_instance" "main" {
   # Monitoring
   performance_insights_enabled = true
   #checkov:skip=CKV_AWS_354:Performance Insights KMS key pending setup
-  monitoring_interval          = 60
-  monitoring_role_arn          = aws_iam_role.rds_monitoring.arn
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
 
   # Availability (Multi-AZ for Prod)
   multi_az = var.environment == "prod" ? true : false
@@ -71,6 +75,7 @@ resource "aws_db_instance" "replica" {
   replicate_source_db = aws_db_instance.main.identifier
   instance_class      = var.db_instance_class
   storage_type        = "gp2"
+  #checkov:skip=CKV2_AWS_60:Copy tags not critical for demo
 
   # Replicas don't need username/password/db_name (inherited from source)
 

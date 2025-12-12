@@ -4,6 +4,7 @@
 
 resource "aws_sns_topic" "alarms" {
   name = "${var.environment}-infrastructure-alarms"
+  #checkov:skip=CKV_AWS_26:SNS Encryption skipped for demo simplicity
 
   tags = {
     Name        = "${var.environment}-infrastructure-alarms"

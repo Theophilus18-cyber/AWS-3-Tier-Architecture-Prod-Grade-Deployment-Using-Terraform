@@ -1,8 +1,8 @@
 # Target Group for ALB (Frontend)
 resource "aws_lb_target_group" "web" {
-  name        = "${var.environment}-web-tg"
-  port        = 80
-  protocol    = "HTTP"
+  name     = "${var.environment}-web-tg"
+  port     = 80
+  protocol = "HTTP"
   #checkov:skip=CKV_AWS_378:HTTP protocol used for demo target group
   vpc_id      = var.vpc_id
   target_type = "instance"
@@ -27,9 +27,9 @@ resource "aws_lb_target_group" "web" {
 
 # Target Group for Backend API
 resource "aws_lb_target_group" "backend" {
-  name        = "${var.environment}-backend-tg"
-  port        = 5000
-  protocol    = "HTTP"
+  name     = "${var.environment}-backend-tg"
+  port     = 5000
+  protocol = "HTTP"
   #checkov:skip=CKV_AWS_378:HTTP protocol used for demo target group
   vpc_id      = var.vpc_id
   target_type = "instance"
@@ -65,9 +65,10 @@ resource "aws_lb" "web" {
   internal           = false
   load_balancer_type = "application"
   #checkov:skip=CKV2_AWS_28:WAF not used for demo cost savings
-  security_groups    = [var.web_security_group_id]
-  subnets            = var.public_subnet_ids
+  security_groups            = [var.web_security_group_id]
+  subnets                    = var.public_subnet_ids
   enable_deletion_protection = var.enable_deletion_protection
+  #checkov:skip=CKV_AWS_150:Deletion protection configurable via variable
   drop_invalid_header_fields = true
 
   #checkov:skip=CKV_AWS_91:Access logging not yet configured

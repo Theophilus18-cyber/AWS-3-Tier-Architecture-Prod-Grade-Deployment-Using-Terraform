@@ -69,7 +69,7 @@ resource "aws_dynamodb_table" "tf_lock" {
   billing_mode = "PAY_PER_REQUEST"
   #checkov:skip=CKV_AWS_119:AWS Managed Keys sufficient for state lock
   #checkov:skip=CKV2_AWS_16:Auto-scaling not needed for on-demand
-  hash_key     = "LockID"
+  hash_key = "LockID"
 
   attribute {
     name = "LockID"
