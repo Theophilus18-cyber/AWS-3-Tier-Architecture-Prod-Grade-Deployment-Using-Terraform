@@ -26,14 +26,14 @@ resource "aws_cloudfront_distribution" "this" {
     target_origin_id = "ALB-${var.origin_domain_name}"
 
     forwarded_values {
-      query_string = true  # ALB apps usually need query strings
-      headers      = ["*"] # Forward all headers to ALB
+      query_string = true
+      headers      = [] # Do NOT forward Host header (fixes 504). Let CF use ALB DNS name.
       cookies {
         forward = "all"
       }
     }
 
-    viewer_protocol_policy = "redirect-to-https"
+    viewer_protocol_policy = "allow-all" # Allow HTTP access as requested
   }
 
   price_class = var.price_class
