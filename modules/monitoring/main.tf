@@ -8,6 +8,7 @@ resource "aws_sns_topic" "alarms" {
   tags = {
     Name        = "${var.environment}-infrastructure-alarms"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -30,6 +31,7 @@ resource "aws_cloudwatch_log_group" "web_tier" {
     Name        = "${var.environment}-web-tier-logs"
     Environment = var.environment
     Tier        = "web"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -41,6 +43,7 @@ resource "aws_cloudwatch_log_group" "app_tier" {
     Name        = "${var.environment}-app-tier-logs"
     Environment = var.environment
     Tier        = "app"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -52,6 +55,7 @@ resource "aws_cloudwatch_log_group" "database" {
     Name        = "${var.environment}-database-logs"
     Environment = var.environment
     Tier        = "database"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -77,6 +81,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_target_response_time" {
   tags = {
     Name        = "${var.environment}-alb-response-time-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -100,6 +105,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_unhealthy_hosts" {
   tags = {
     Name        = "${var.environment}-alb-unhealthy-hosts-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -122,6 +128,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   tags = {
     Name        = "${var.environment}-alb-5xx-errors-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -149,6 +156,7 @@ resource "aws_cloudwatch_metric_alarm" "web_asg_cpu_high" {
     Name        = "${var.environment}-web-cpu-high-alarm"
     Environment = var.environment
     Tier        = "web"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -172,6 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "app_asg_cpu_high" {
     Name        = "${var.environment}-app-cpu-high-alarm"
     Environment = var.environment
     Tier        = "app"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -196,6 +205,7 @@ resource "aws_cloudwatch_metric_alarm" "web_asg_memory_high" {
     Name        = "${var.environment}-web-memory-high-alarm"
     Environment = var.environment
     Tier        = "web"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -220,6 +230,7 @@ resource "aws_cloudwatch_metric_alarm" "app_asg_memory_high" {
     Name        = "${var.environment}-app-memory-high-alarm"
     Environment = var.environment
     Tier        = "app"
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -246,6 +257,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
   tags = {
     Name        = "${var.environment}-rds-cpu-high-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -268,6 +280,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_free_storage_low" {
   tags = {
     Name        = "${var.environment}-rds-storage-low-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -290,6 +303,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_connections_high" {
   tags = {
     Name        = "${var.environment}-rds-connections-high-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -312,6 +326,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_read_latency" {
   tags = {
     Name        = "${var.environment}-rds-read-latency-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -334,6 +349,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_write_latency" {
   tags = {
     Name        = "${var.environment}-rds-write-latency-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -487,6 +503,7 @@ resource "aws_cloudwatch_composite_alarm" "infrastructure_critical" {
   tags = {
     Name        = "${var.environment}-infrastructure-critical-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 
@@ -522,5 +539,6 @@ resource "aws_cloudwatch_metric_alarm" "application_errors" {
   tags = {
     Name        = "${var.environment}-app-errors-alarm"
     Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }

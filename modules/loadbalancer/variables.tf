@@ -35,4 +35,4 @@ variable "alb_certificate_arn" {
   description = "ARN of the ALB certificate"
   type        = string
 }
-*/
+*/variable "enable_deletion_protection" { description = "Enable deletion protection for ALB" type = bool default = false }

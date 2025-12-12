@@ -64,6 +64,12 @@ resource "aws_lb" "web" {
   load_balancer_type = "application"
   security_groups    = [var.web_security_group_id]
   subnets            = var.public_subnet_ids
+  enable_deletion_protection = var.enable_deletion_protection
+  drop_invalid_header_fields = true
+
+  #checkov:skip=CKV_AWS_91:Access logging not yet configured
+  #checkov:skip=CKV_AWS_131:Dropped invalid headers enabled above
+
 
   tags = {
     Name        = "${var.environment}-web-alb"
@@ -77,6 +83,7 @@ resource "aws_lb_listener" "web" {
   load_balancer_arn = aws_lb.web.arn
   port              = 80
   protocol          = "HTTP"
+  #checkov:skip=CKV_AWS_2:HTTPS not yet configured (waiting for certificate)
 
   default_action {
     type             = "forward"

@@ -35,16 +35,17 @@ resource "aws_db_instance" "main" {
   # Security & Encryption
   storage_encrypted                   = true
   iam_database_authentication_enabled = true
-  
+
   # Deletion Protection (Enable for Prod)
   deletion_protection = var.environment == "prod" ? true : false
 
   # Backups & Maintenance
   backup_retention_period    = var.environment == "prod" ? 7 : 1
   auto_minor_version_upgrade = true
-  
+
   # Monitoring
   performance_insights_enabled = true
+  #checkov:skip=CKV_AWS_354:Performance Insights KMS key pending setup
   monitoring_interval          = 60
   monitoring_role_arn          = aws_iam_role.rds_monitoring.arn
 

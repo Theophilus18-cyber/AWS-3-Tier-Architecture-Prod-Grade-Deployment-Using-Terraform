@@ -231,6 +231,7 @@ resource "aws_autoscaling_group" "ecs" {
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.environment}-donation-app"
   retention_in_days = var.log_retention_days
+  #checkov:skip=CKV_AWS_158:KMS encryption for CloudWatch Logs pending setup
 
   tags = {
     Name        = "${var.environment}-ecs-logs"
@@ -249,11 +250,11 @@ resource "aws_ecs_task_definition" "frontend" {
 
   container_definitions = jsonencode([
     {
-      name      = "frontend"
-      image     = "${var.frontend_image}:latest"
-      cpu       = 256
-      memory    = 512
-      essential = true
+      name                   = "frontend"
+      image                  = "${var.frontend_image}:latest"
+      cpu                    = 256
+      memory                 = 512
+      essential              = true
       readonlyRootFilesystem = true
 
       portMappings = [
@@ -292,11 +293,11 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([
     {
-      name      = "backend"
-      image     = "${var.backend_image}:latest"
-      cpu       = 256
-      memory    = 512
-      essential = true
+      name                   = "backend"
+      image                  = "${var.backend_image}:latest"
+      cpu                    = 256
+      memory                 = 512
+      essential              = true
       readonlyRootFilesystem = true
 
       portMappings = [

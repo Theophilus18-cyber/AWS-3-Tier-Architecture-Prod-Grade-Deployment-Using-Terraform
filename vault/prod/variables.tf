@@ -52,8 +52,4 @@ variable "vault_version" {
   default     = "1.15.0-1"
 }
 
-variable "enable_audit_logging" {
-  description = "Enable audit logging to CloudWatch"
-  type        = bool
-  default     = true
-}
+
