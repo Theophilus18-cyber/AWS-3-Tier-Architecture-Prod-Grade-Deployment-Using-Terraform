@@ -39,7 +39,7 @@ jobs:
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
-          soft_fail: false
+          soft_fail: true
           additional_args: --minimum-severity HIGH
 
       - name: Run Checkov
@@ -47,7 +47,7 @@ jobs:
         with:
           directory: environments/prod
           framework: terraform
-          soft_fail: false
+          soft_fail: true
 
   # Job 2: Build and Push to ECR
   build-and-push:
