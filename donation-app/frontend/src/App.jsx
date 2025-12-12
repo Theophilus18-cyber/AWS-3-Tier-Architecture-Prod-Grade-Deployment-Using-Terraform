@@ -5,7 +5,7 @@ import axios from 'axios';
 // API configuration...
 
 //testing deployement.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 function App() {
     const [donations, setDonations] = useState([]);
@@ -223,8 +223,8 @@ function App() {
                                             key={amt}
                                             onClick={() => setFormData(prev => ({ ...prev, amount: amt }))}
                                             className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${Number(formData.amount) === amt
-                                                    ? 'bg-primary-600 text-white border-primary-600'
-                                                    : 'bg-white text-gray-600 border-gray-300 hover:border-primary-500 hover:text-primary-600'
+                                                ? 'bg-primary-600 text-white border-primary-600'
+                                                : 'bg-white text-gray-600 border-gray-300 hover:border-primary-500 hover:text-primary-600'
                                                 }`}
                                         >
                                             ${amt}
